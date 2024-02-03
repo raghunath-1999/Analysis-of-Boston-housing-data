@@ -1,0 +1,1084 @@
+---
+title: "Project"
+author: |
+  NAVEEN RAJU SREERAMA RAJU GOVINDA RAJU
+  , RAGHUNATH BABU
+  , SHRIYA PRASANNA
+date: "2022-11-25"
+output:
+  word_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  html_document:
+    toc: yes
+    df_print: paged
+---
+
+
+```{r}
+setwd("C:/Users/Naveen/Desktop/Applied Statistics/project/real estate/")
+data1 <- read.csv("./data.csv", sep=",")
+# data1<-subset(data1,select=-c(state,communityname,fold))
+
+head(data1)
+ncol(data1)
+# summary(trans)
+```
+
+
+### 4.1-1
+To find which column has NA
+```{r}
+list_na <- colnames(data1)[ apply(data1, 2, anyNA) ]
+list_na
+```
+```{r}
+data1[!complete.cases(data1),]
+```
+Find the median of values of that column that has NA
+```{r}
+median<-median(data1$RM, na.rm=TRUE)
+print(median)
+```
+Replace NA in "RM" column with median values and recheck again if NA is there in that column
+```{r}
+data1[is.na(data1$RM),"RM"]<-median
+print(data1)
+
+list_na <- colnames(data1)[ apply(data1, 2, anyNA) ]
+list_na
+```
+Saving NA replaced data frame
+```{r}
+data_rm<-data1
+write.csv(data1,"./new_data1.csv", row.names = FALSE)
+```
+
+Analyzing summary of the dataset
+```{r}
+summary(data1)
+```
+### 4.1-2
+
+Analyzing histogram of each column of the data set
+```{r}
+# install.packages("Hmisc")
+library(Hmisc)
+hist.data.frame(data1)
+```
+
+### 4.2-1
+Fitting the linear regression with response variable "MEDV" and all other columns as predictor variables
+```{r}
+model1=lm(formula = MEDV ~ ., data = data1)
+summary(model1)
+anova(model1)
+```
+
+
+
+
+### 4.2-2-a
+
+Analyzing correlation of features
+```{r}
+round(cor(data1),3)
+```
+
+### 4.2-2-b
+Eliminating variable with high multi-collinearity
+used VIF
+VIF score
+```{r}
+
+library(car)
+car::vif(model1)
+
+```
+The VIF score of Tax is very high, thus we are removing the predictor variable TAX from the regression
+Removing "tax" predictor variable.Doing so,Residual standard error marginally increased to 4.798 from 4.75. But,Adjusted R-squared  marginally decreased to 0.7279 from 0.7332.So we can remove it.
+```{r}
+data1 <- subset(data1, select=-c(TAX))
+model1=lm(formula = MEDV ~ ., data = data1)
+summary(model1)
+anova(model1)
+```
+### 4.2-3
+scatter plot for plots individually
+```{r}
+
+plot(data1$CRIM,data1$MEDV)
+plot(data1$ZN,data1$MEDV)
+plot(data1$INDUS,data1$MEDV)
+plot(data1$CHAS,data1$MEDV)
+plot(data1$NOX,data1$MEDV)
+plot(data1$RM,data1$MEDV)
+plot(data1$AGE,data1$MEDV)
+plot(data1$DIS,data1$MEDV)
+plot(data1$RAD,data1$MEDV)
+plot(data1$PTRATIO,data1$MEDV)
+plot(data1$B,data1$MEDV)
+plot(data1$LSTAT,data1$MEDV)
+
+```
+LSATAT has curvilinear response
+
+Transforming the LSAT variable.
+
+Residual standard error decreased from 4.798 to 4.342, Adjusted R-squared increased from   0.7332 to 0.7771.
+```{r}
+
+LSTAT_sq <- 1/data1$LSTAT
+data1 <- subset(data1, select=-c(LSTAT))
+data1$LSTAT <- LSTAT_sq
+
+
+model1=lm(formula = MEDV ~ ., data = data1)
+summary(model1)
+anova(model1)
+plot(data1$LSTAT,data1$MEDV)
+```
+
+### 4.2-4
+
+
+Analyzing residuals distribution using box plot, we can see there are lot of outliers 
+```{r}
+residuals = resid(model1)
+boxplot(residuals)
+```
+### 4.2-5
+
+Plotting residuals vs fitted values graph to check if residuals follow homoscedasticity, here we can see small curvature and outliers towards higher end of fitted values 
+```{r}
+residuals = resid(model1)
+plot(fitted(model1), residuals,ylab="Residuals",xlab="fitted value", main="Residual vs fitted") 
+abline(0,0)
+```
+
+### 4.2-6
+
+We can see in the below Normal QQ plot that residuals are deviating from the normal distribution  
+```{r}
+residuals = resid(model1)
+qqplot<-(qqnorm(residuals))
+qqline(residuals)
+```
+
+### 4.2-7
+
+Test whether there is a regression relation; use α = .05
+H0 : β1 = β2 = · · · = βp−1 = 0
+Ha : not all βi = 0, i = 1, . . . , p − 1
+
+```{r}
+anova(model1)
+
+```
+
+F*=MSR/MSE
+F*=((6440.8+3554.3+2551.2+1529.8+76.2+10958.5+89.9+1728.0+33.9+1401.7+614.3+4444.5+9293.2)/12)/((9293.2)/493)
+F*=3559.6916/18.8503=188.8400
+
+If F∗ ≤ F(1 − α; p − 1, n − p) conclude H0
+If F∗ > F(1 − α; p − 1, n − p) conclude Ha
+
+
+```{r}
+ncol(data1)
+f<-qf(0.95,5-1,nrow(data1)-5)
+print(f)
+```
+
+Since F*>f we can conclude Ha
+
+
+### 4.2-8
+
+
+Breusch Pagan test to check constancy of the error variance
+
+Assuming log σi^2 = γ0 + γ1Xi1 +.....+γnXin; use α = .01
+
+The alternatives are
+H0 : γ1 = γ2 = 0
+Ha : γ1 != 0 or γ2 != 0 or ...... γn != 0
+
+
+```{r}
+library(lmtest)
+bptest_val<-bptest(model1, studentize = FALSE)
+print(bptest_val)
+```
+
+Since P value is less than 0.05 we reject Null hypothesis. So there exists non constance in error variance.
+
+### 4.2-9
+
+Now we apply Box Cox transformation on response variable.
+Box Cox find which transformation on Y will be appropriate to correct skewness of the distributions of error terms,unequal error variances, and non linearity of the regression function.
+Box cox automatically finds a transformations from family of power transformations on Y such that SSE reduces.
+###Box Cox transformation
+```{r}
+library(MASS)
+boccox_values<-boxcox(model1, lambda=seq(-1,1,0.1))
+print(boccox_values$x[which.max(boccox_values$y)])
+
+```
+
+Transformation of Y using lambda=0.4343434 is optimum with minimum SSE.
+
+Now we transform response variable "MEDV" from lambda value obtained from Box Cox method.Replace MEDV column in dataset with new MEDV column with transformation applied on it.
+```{r}
+head(data1)
+y_transform<-(data1$MEDV)^0.4343434
+trans_data1<-subset(data1,select=-c(MEDV))
+trans_data1$MEDV<-y_transform
+head(trans_data1)
+```
+Now we fit the model with transformed variables.
+```{r}
+model2=lm(formula = MEDV ~ ., data = trans_data1)
+summary(model2)
+anova(model2)
+```
+
+Fit linear regression model on data set with aforementioned transformation applied.
+Therefore after applying Box Cox transformation Adjusted R square marginally decreased from 0.7771 to 0.7743.But  Residual standard error decreased from 4.342 to 0.315.
+
+Box plot of residuals before and after Box cox transformation. We can see that residuals out liers patterns have been distributed on either side of minimum and maximum values
+```{r}
+residuals = resid(model1)
+boxplot(residuals)
+
+residuals = resid(model2)
+boxplot(residuals)
+```
+We can see the change in distribution  of residuals around zero after Box Cox transformation is applied.
+
+```{r}
+residuals = resid(model1)
+plot(fitted(model1), residuals,ylab="Residuals",xlab="fitted value", main="Residual vs fitted before Box Cox transformation") 
+abline(0,0)
+
+residuals = resid(model2)
+plot(fitted(model2), residuals,ylab="Residuals",xlab="fitted value", main="Residual vs fitted after Box Cox transformation") 
+abline(0,0)
+```
+
+
+
+```{r}
+residuals = resid(model2)
+qqplot<-(qqnorm(residuals))
+qqline(residuals)
+```
+
+We observe that still the residuals are not following normal distribution due to outliers, as observed on top and bottom corner of the QQ plot.
+
+### 4.2-10-a
+
+Identifying outlying Y observations based on Studentized deleted residuals
+
+```{r}
+library("olsrr")
+del_residuals=ols_plot_resid_stud_fit(model=model2)
+```
+Analyzing data object returned by "ols_plot_resid_stud_fit" function 
+```{r}
+print(del_residuals$data)
+```
+```{r}
+del_residuals<-del_residuals$data[,'dsr']
+print(del_residuals)
+```
+We conduct a formal test using Bonferroni test procedure of whether the case with the largest absolute studentized deleted residual is an outlier.Using the aforementioned test we where able to find 4 observations where outliers.
+
+```{r}
+n<-nrow(data1)
+p<-14
+t_test<-qt(1-(0.05/(2*nrow(data1))),n-p-1) #t(1-alpha/2*n; n - p - 1)
+print(t_test)
+outliers_wrt_y<-del_residuals[abs(del_residuals)>t_test]
+print(outliers_wrt_y)
+```
+
+```{r}
+print(outliers_wrt_y)
+```
+### 4.2-10-b
+Identifying outlying X observations - HAT matrix Leverage values
+
+```{r}
+resid_lev<-ols_plot_resid_lev(model2, print_plot = TRUE)
+```
+Analyzing leverage values of all observations calculated by "ols_plot_resid_lev" library
+```{r}
+print(resid_lev$data)
+leverages<-resid_lev$data[,'leverage']
+print(leverages)
+
+```
+By a rule that any leverage values greater than 2p/n are considered as outlying observations with respect to X values. From this formula we found leverage threshold as 0.05533597
+
+```{r}
+n<-nrow(data1)
+p<-14
+leverage_thresh<-(2*p)/n
+print("leverage_thresh=")
+print(leverage_thresh)
+
+```
+These are the observations having leverage vales greater than leverage threshold point calculated.
+```{r}
+outliers_wrt_x<-leverages[abs(leverages)>leverage_thresh]
+print(outliers_wrt_x)
+```
+
+### 4.2-11-a
+
+Cook's distance
+
+After identifying cases that are outlying with respect to their Y values and or with their X 
+values, the next step is to find  whether or not these outlying cases are influential. We 
+shall consider a case to be influential if its exclusion causes major changes in the fitted 
+regression function
+
+Cook's distance measure considers the influence of the ith case on all n fitted values. Cook's distance measure, denoted by Di , is an aggregate influence measure, showing the effect of the i th case on all n fitted values
+
+Cook's distance greater than 4/n, where n is total number of observations in dataset. Then it is considered as outlier.
+
+```{r}
+n<-nrow(data1)
+plot(cooks.distance(model2))
+abline(h = 4/n, lty = 2, col = "steelblue")
+cooksD <- cooks.distance(model2)
+
+```
+Now, we remove all outliers based on Cook's distance threshold as said above. Now we fit the model using the dataset with outlying observations removed.
+
+Adjusted R square improved from 0.7743 to 0.8469. 
+Residual standard error decreased from 0.315 to 0.2283.
+
+```{r}
+influential_obs <- as.numeric(names(cooksD)[(cooksD > (4/n))])
+print(influential_obs)
+outliers_removed <- trans_data1[-influential_obs, ]
+
+model3=lm(formula = MEDV ~ ., data = outliers_removed)
+summary(model3)
+anova(model3)
+```
+
+Analyzing following mentioned plot before and after removing outliers, plots are residuals vs fitted, residuals boxplot,qq plot and histogram
+
+In residuals vs fitted plot that outliers are not present now.
+In box plot we can see number of outliers has reduced as we have removed influential outliers.
+In QQ plot we can see that before points were deviating from the tails but now its less deviating.
+```{r}
+residuals = resid(model2)
+plot(fitted(model2), residuals,ylab="Residuals",xlab="fitted value", main="Residual vs fitted before Box Cox transformation") 
+abline(0,0)
+
+residuals = resid(model3)
+plot(fitted(model3), residuals,ylab="Residuals",xlab="fitted value", main="Residual vs fitted after removal of outliers") 
+abline(0,0)
+
+
+residuals = resid(model2)
+boxplot(residuals)
+
+residuals = resid(model3)
+boxplot(residuals)
+
+residuals = resid(model2)
+qqplot<-(qqnorm(residuals))
+qqline(residuals)
+
+residuals = resid(model3)
+qqplot<-(qqnorm(residuals))
+qqline(residuals)
+
+
+```
+
+```{r}
+#summary(model3)
+library(ggplot2)
+
+#create histogram of residuals
+ggplot(data = outliers_removed, aes(x = model3$residuals)) +
+    geom_histogram(fill = 'steelblue', color = 'black') +
+    labs(title = 'Histogram of Residuals', x = 'Residuals', y = 'Frequency')
+
+qt(p=.05, df=511-14, lower.tail=TRUE)
+nrow(outliers_removed)
+```
+### 4.2-11-b
+
+DFBETAS
+
+One way to calculate the influence of observations is by using a metric known as DFBETAS, which tells us the standardized effect on each coefficient of deleting each individual observation. This metric gives us an idea of how influential each observation is on each coefficient estimate in a given regression model.
+
+
+
+```{r}
+dfbetas <- as.data.frame(dfbetas(model2))
+dfbetas
+```
+As a guideline for identifying influential cases, we consider a case influential if the absolute value of DFBETAS exceeds 1 for small to medium data sets and 2/ In for large data sets.
+
+```{r}
+thresh<-2/sqrt(nrow(trans_data1))
+print(thresh)
+```
+Based on the above calculated thresholds below are the plots to observe DFBETAS of each predictor variable.
+
+```{r}
+par(mfrow = c(2,2))
+plot(dfbetas$CRIM, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$ZN, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$INDUS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$CHAS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+par(mfrow = c(2,2))
+
+plot(dfbetas$NOX, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$RM, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$AGE, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$DIS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+par(mfrow = c(2,2))
+
+plot(dfbetas$RAD, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+# plot(dfbetas$TAX, type='h')
+# abline(h = thresh, lty = 2)
+# abline(h = -thresh, lty = 2)
+
+plot(dfbetas$PTRATIO, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$B, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$LSTAT, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+```
+```{r}
+
+outliers_wrt_CRIM<-leverages[dfbetas$CRIM>thresh]
+cat("Influentials observations with respective to CRIM=",length(outliers_wrt_CRIM),"\n")
+
+outliers_wrt_ZN<-leverages[dfbetas$ZN>thresh]
+cat("Influentials observations with respective to ZN=",length(outliers_wrt_ZN),"\n")
+
+outliers_wrt_INDUS<-leverages[dfbetas$INDUS>thresh]
+cat("Influentials observations with respective to INDUS=",length(outliers_wrt_INDUS),"\n")
+
+outliers_wrt_CHAS<-leverages[dfbetas$CHAS>thresh]
+cat("Influentials observations with respective to CHAS=",length(outliers_wrt_CHAS),"\n")
+
+outliers_wrt_NOX<-leverages[dfbetas$NOX>thresh]
+cat("Influentials observations with respective to NOX=",length(outliers_wrt_NOX),"\n")
+
+outliers_wrt_RM<-leverages[dfbetas$RM>thresh]
+cat("Influentials observations with respective to RM=",length(outliers_wrt_RM),"\n")
+
+outliers_wrt_AGE<-leverages[dfbetas$AGE>thresh]
+cat("Influentials observations with respective to AGE=",length(outliers_wrt_AGE),"\n")
+
+outliers_wrt_DIS<-leverages[dfbetas$DIS>thresh]
+cat("Influentials observations with respective to DIS=",length(outliers_wrt_DIS),"\n")
+
+outliers_wrt_RAD<-leverages[dfbetas$RAD>thresh]
+cat("Influentials observations with respective to RAD=",length(outliers_wrt_RAD),"\n")
+
+outliers_wrt_PTRATIO<-leverages[dfbetas$PTRATIO>thresh]
+cat("Influentials observations with respective to PTRATIO=",length(outliers_wrt_PTRATIO),"\n")
+
+outliers_wrt_B<-leverages[dfbetas$B>thresh]
+cat("Influentials observations with respective to B=",length(outliers_wrt_B),"\n")
+
+outliers_wrt_LSTAT<-leverages[dfbetas$LSTAT>thresh]
+cat("Influentials observations with respective to LSTAT=",length(outliers_wrt_LSTAT),"\n")
+```
+
+DFBETAS for data with outliers removed based on COOK'S distance.
+
+
+```{r}
+dfbetas <- as.data.frame(dfbetas(model3))
+dfbetas
+```
+As a guideline for identifying influential cases, we recommend considering a case influential if the absolute value of DFBETAS exceeds 1 for small to medium data sets and 2/ In for large data sets.
+```{r}
+thresh<-2/sqrt(nrow(outliers_removed))
+print(thresh)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(dfbetas$CRIM, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$ZN, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$INDUS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$CHAS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+par(mfrow = c(2,2))
+
+plot(dfbetas$NOX, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$RM, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$AGE, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$DIS, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+par(mfrow = c(2,2))
+
+plot(dfbetas$RAD, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+# plot(dfbetas$TAX, type='h')
+# abline(h = thresh, lty = 2)
+# abline(h = -thresh, lty = 2)
+
+plot(dfbetas$PTRATIO, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$B, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+
+plot(dfbetas$LSTAT, type='h')
+abline(h = thresh, lty = 2)
+abline(h = -thresh, lty = 2)
+```
+```{r}
+
+outliers_wrt_CRIM<-leverages[dfbetas$CRIM>thresh]
+cat("Influentials observations with respective to CRIM=",length(outliers_wrt_CRIM),"\n")
+
+outliers_wrt_ZN<-leverages[dfbetas$ZN>thresh]
+cat("Influentials observations with respective to ZN=",length(outliers_wrt_ZN),"\n")
+
+outliers_wrt_INDUS<-leverages[dfbetas$INDUS>thresh]
+cat("Influentials observations with respective to INDUS=",length(outliers_wrt_INDUS),"\n")
+
+outliers_wrt_CHAS<-leverages[dfbetas$CHAS>thresh]
+cat("Influentials observations with respective to CHAS=",length(outliers_wrt_CHAS),"\n")
+
+outliers_wrt_NOX<-leverages[dfbetas$NOX>thresh]
+cat("Influentials observations with respective to NOX=",length(outliers_wrt_NOX),"\n")
+
+outliers_wrt_RM<-leverages[dfbetas$RM>thresh]
+cat("Influentials observations with respective to RM=",length(outliers_wrt_RM),"\n")
+
+outliers_wrt_AGE<-leverages[dfbetas$AGE>thresh]
+cat("Influentials observations with respective to AGE=",length(outliers_wrt_AGE),"\n")
+
+outliers_wrt_DIS<-leverages[dfbetas$DIS>thresh]
+cat("Influentials observations with respective to DIS=",length(outliers_wrt_DIS),"\n")
+
+outliers_wrt_RAD<-leverages[dfbetas$RAD>thresh]
+cat("Influentials observations with respective to RAD=",length(outliers_wrt_RAD),"\n")
+
+outliers_wrt_PTRATIO<-leverages[dfbetas$PTRATIO>thresh]
+cat("Influentials observations with respective to PTRATIO=",length(outliers_wrt_PTRATIO),"\n")
+
+outliers_wrt_B<-leverages[dfbetas$B>thresh]
+cat("Influentials observations with respective to B=",length(outliers_wrt_B),"\n")
+
+outliers_wrt_LSTAT<-leverages[dfbetas$LSTAT>thresh]
+cat("Influentials observations with respective to LSTAT=",length(outliers_wrt_LSTAT),"\n")
+```
+
+
+
+### 4.2-12
+
+Analysis of qualitative variable
+
+t*=.1058293/.0441620
+  =2.396007001
+  
+t(0.95,472)=1.648088
+thus making the CHAS significant
+
+```{r}
+
+library(dplyr)
+near_river=outliers_removed %>% filter(outliers_removed$CHAS==1)
+near_river
+count(near_river)
+
+```
+
+```{r}
+away_river=outliers_removed %>% filter(outliers_removed$CHAS==0)
+count(away_river)
+head(away_river)
+
+```
+### 4.2-13
+identity test
+
+```{r}
+ttest=t.test(near_river$CRIM+near_river$ZN+near_river$INDUS+near_river$NOX+near_river$RM+near_river$AGE+near_river$DIS+near_river$RAD+
+               near_river$PTRATIO+near_river$B+near_river$LSTAT,away_river$CRIM+away_river$ZN+away_river$INDUS+away_river$NOX+away_river$RM+away_river$AGE+away_river$DIS+away_river$RAD+away_river$PTRATIO+away_river$B+away_river$LSTAT,var.equal = TRUE)
+ttest
+
+```
+NOT  IDENTICAL
+large  p value
+
+regression for each quantitative variable
+```{r}
+
+model2_1=lm(near_river$MEDV~near_river$CRIM+near_river$ZN+near_river$INDUS+near_river$NOX+near_river$RM+near_river$AGE+near_river$DIS+near_river$RAD+ near_river$PTRATIO+near_river$B+near_river$LSTAT)
+summary(model2_1)
+
+```
+```{r}
+model2_2=lm(away_river$MEDV~away_river$CRIM+away_river$ZN+away_river$INDUS+away_river$NOX+away_river$RM+away_river$AGE+away_river$DIS+away_river$RAD+away_river$PTRATIO+away_river$B+away_river$LSTAT)
+summary(model2_2)
+
+
+
+```
+### 4.2-14
+
+ridge regression
+```{r}
+
+#model2=lm(formula = MEDV ~ CRIM+ZN+INDUS+CHAS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT, data = data1)
+#summary(model2)
+library(MASS)
+
+fit.ridge<-lm.ridge(MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT, data=away_river, lambda=seq(0,1000,10))
+plot(fit.ridge)
+summary(fit.ridge)
+```
+
+```{r}
+y <- away_river$MEDV
+x <- data.matrix(away_river [, c('CRIM','ZN','INDUS','NOX','RM','AGE','DIS','RAD','PTRATIO','B','LSTAT')])
+library(glmnet)
+modeltest <- glmnet(x, y, alpha = 0)
+
+summary(modeltest)
+
+
+
+```
+
+
+estimating best lambda
+```{r}
+
+
+cv_model <- cv.glmnet(x, y, alpha = 0)
+best_lambda <- cv_model$lambda.min
+best_lambda
+plot(cv_model) 
+
+
+
+
+
+```
+final modelridge coeff
+```{r}
+best_model <- glmnet(x, y, alpha = 0, lambda = best_lambda)
+coef(best_model)
+
+plot(modeltest, xvar = "lambda")
+```
+waste of doing ridge - only marginal  improvement
+```{r}
+y_predicted <- predict(modeltest, s = best_lambda, newx = x)
+
+#find SST and SSE
+sst <- sum((y - mean(y))^2)
+sse <- sum((y_predicted - y)^2)
+
+#find R-Squared
+rsq <- 1 - sse/sst
+rsq
+
+
+
+
+```
+
+
+
+regression tree
+
+
+```{r}
+
+
+library(ISLR) #contains Hitters dataset
+library(rpart) #for fitting decision trees
+library(rpart.plot) #for plotting decision trees
+
+#build the initial tree
+tree <- rpart(MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT, data=away_river, control=rpart.control(cp=.001))
+
+#view results
+printcp(tree)
+
+
+
+
+```
+prune the regression tree to find the optimal value to use for cp (the complexity parameter) that leads to the lowest test error.
+
+```{r}
+best <- tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]
+
+#produce a pruned tree based on the best cp value
+pruned_tree <- prune(tree, cp=best)
+
+#plot the pruned tree
+prp(pruned_tree,
+    faclen=0, #use full names for factor labels
+    extra=1, #display number of obs. for each terminal node
+    roundint=F, #don't round to integers in output
+    digits=5) #display 5 decimal places in output
+best
+
+```
+```{r}
+plotcp(pruned_tree)
+```
+```{r}
+
+new <- data.frame(CRIM=0.1396,ZN=0,INDUS=8.56,CHAS=0,NOX=0.52,RM=6.167,AGE=90,DIS=2.421,RAD=5,PTRATIO=20.9,B=392.69,LSTAT=12.33)
+
+#use pruned tree to predict salary of this player
+predict(pruned_tree, newdata=new)
+
+```
+
+
+
+
+
+Regreesion tree 1
+
+```{r}
+
+library(MASS)
+data(away_river)
+
+str(away_river)
+
+```
+```{r}
+
+library(rpart)
+model = rpart(MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT, data = away_river)
+model
+```
+
+Modeling Decision Regression in R with Caret
+
+
+```{r}
+
+library(caret)
+set.seed(1)
+
+model <- train(
+  MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT,
+  data = away_river,
+  method = 'rpart2'
+)
+model
+
+plot(model)
+
+```
+Preprocessing with Caret
+We will center and scale our data by passing the following to the train method:
+
+```{r}
+set.seed(1)
+
+model2 <- train(
+  MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT,
+  data = away_river,
+  method = 'rpart2',
+  preProcess = c("center", "scale")
+)
+model2
+
+
+```
+Splitting the Data Set
+80/20 split
+```{r}
+
+set.seed(1)
+
+inTraining <- createDataPartition(away_river$MEDV, p = .80, list = FALSE)
+training <- away_river[inTraining,]
+testing  <- away_river[-inTraining,]
+```
+
+```{r}
+
+set.seed(1)
+model3 <- train(
+  MEDV ~ CRIM+ZN+INDUS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT,
+  data = training,
+  method = 'rpart2',
+  preProcess = c("center", "scale")
+)
+model3
+
+```
+testing
+```{r}
+test.features = subset(testing, select=-c(MEDV))
+test.target = subset(testing, select=MEDV)[,1]
+
+predictions = predict(model3, newdata = test.features)
+
+# RMSE
+sqrt(mean((test.target - predictions)^2))
+
+```
+
+
+
+
+```{r}
+
+# R2
+cor(test.target, predictions) ^ 2
+
+```
+use a data partitioning strategy like k-fold cross-validation that resamples and splits our data many times. We then train the model on these samples and pick the best model.
+```{r}
+
+set.seed(1)
+ctrl <- trainControl(
+  method = "cv",
+  number = 10,
+)
+model4 <- train(
+  MEDV ~ CRIM+ZN+INDUS+CHAS+NOX+RM+AGE+DIS+RAD+PTRATIO+B+LSTAT,
+  data = training,
+  method = 'rpart2',
+  preProcess = c("center", "scale"),
+  trControl = ctrl
+)
+model4
+plot(model4)
+
+```
+```{r}
+
+test.features = subset(testing, select=-c(MEDV))
+test.target = subset(testing, select=MEDV)[,1]
+
+predictions = predict(model4, newdata = test.features)
+
+# RMSE
+sqrt(mean((test.target - predictions)^2))
+
+```
+```{r}
+# R2
+cor(test.target, predictions) ^ 2
+
+
+```
+
+
+### 4.2-15
+
+
+Robust regression
+
+When there is no time for a thorough identification of outlying cases and an analysis of their influence, nor for a careful consideration of remedial measures. Instead, an automated regression calibration must be used. Robust regression procedures will automatically guard against undue influence of outlying cases in this situation.
+
+From the plot we can see that there are observations with standardized residuals as outliers.
+```{r}
+ols=lm(formula = MEDV ~ ., data = data1)
+summary(ols)
+plot(data1$MEDV, rstandard(ols), ylab='Standardized Residuals', xlab='MEDV') 
+abline(h=0)
+```
+```{r}
+library(MASS)
+robust <- rlm(formula =MEDV ~ ., data = data1)
+```
+RSE of ordinary least square regression model and Robust regression model
+```{r}
+summary(ols)$sigma
+summary(robust)$sigma
+```
+Model summary comparison of ordinary least square regression model and Robust regression model
+```{r}
+summary(ols)
+summary(robust)
+```
+We can see that roughly, as the absolute residual goes down, the weight goes up. In other words, cases with a large residuals tend to be down-weighted.Hence, the more cases in the robust regression that have a weight close to one, the closer the results of the OLS and robust regressions.
+
+Since we are not able to get Adjusted r square from robust regression fitted model using "rlm" function of MASS library. We just fit the robust regression model and extract weights from the fitted model and use it to fit model using "lm" function with weights parameter. 
+```{r}
+
+wei_data1<-data1
+wei_data1["absolute resid"]<-c(abs(robust$resid))
+wei_data1["weight"]<-c(robust$w)
+print(wei_data1[1:30,])
+```
+We can observe that,
+
+From Ordinary least square regression the Adjusted Rsquare is 0.7771 and Residual standard error is 4.342.
+
+From Robust regression model using Huber weights the Adjusted Rsquare is 0.8489 and Residual standard error is 3.062.
+
+Hence, Residual standard error is reduced and Adjusted Rsquare is increased
+```{r}
+ols <- lm(formula = MEDV ~ ., data = data1)
+robust.weighted <- lm(formula = MEDV ~ ., data = data1,weights=robust$w)
+summary(ols)
+summary(robust.weighted)
+
+```
+
+Applying Robust Regression on dataset of which response variable is transformed using Box Cox method.
+
+We can observe that,
+
+From Ordinary least square regression the Adjusted Rsquare is 0.7823 and Residual standard error is 0.04546.
+
+From Robust regression model using Huber weights the Adjusted Rsquare is 0.8509 and Residual standard error is 0.03374.
+
+Hence, Residual standard error is reduced and Adjusted Rsquare is increased
+```{r}
+library(MASS)
+
+
+ols=lm(formula = MEDV ~ ., data = trans_data1)
+
+robust <- rlm(formula =MEDV ~ ., data = trans_data1)
+
+robust.weighted <- lm(formula = MEDV ~ ., data = trans_data1,weights=robust$w)
+summary(ols)
+summary(robust.weighted)
+
+```
+
+Applying Robust Regression on dataset of which response variable is transformed using Box Cox method and outlying observations removed using Cook's distance.
+
+We can observe that,
+
+From Ordinary least square regression the Adjusted R square is 0.8469 and Residual standard error is 0.2283.
+
+From Robust regression model using Huber weights the Adjusted R square is 0.881 and Residual standard error is 0.1888.
+
+Hence, Residual standard error is reduced and Adjusted Rsquare is increased
+
+```{r}
+
+ols=lm(formula = MEDV ~ ., data = outliers_removed)
+
+robust <- rlm(formula =MEDV ~ ., data = outliers_removed)
+
+robust.weighted <- lm(formula = MEDV ~ ., data = outliers_removed,weights=robust$w)
+summary(ols)
+summary(robust.weighted)
+```
+### 4.2-16
+
+Random Forest
+```{r}
+library(caret)
+set.seed(1)
+
+
+head(away_river)
+inTraining <- createDataPartition(away_river$MEDV, p = .80, list = FALSE)
+training <- away_river[inTraining,]
+testing  <- away_river[-inTraining,]
+model <- train(
+  MEDV ~ .,
+  data = training,
+  method = 'rf'
+)
+model
+plot(model)
+
+plot(model$finalModel)
+# rpart.plot(model$finalModel,fallen.leaves = F)
+```
+
+```{r}
+test.features = subset(testing, select=-c(MEDV))
+test.target = subset(testing, select=MEDV)[,1]
+
+predictions = predict(model, newdata = test.features)
+
+# RMSE
+sqrt(mean((test.target - predictions)^2))
+```
+
+
+
+
